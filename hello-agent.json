@@ -1,0 +1,154 @@
+{
+  "name": "Hello Agent - Lead Qualifier",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "node-trigger-0001",
+      "name": "Start (Manual Trigger)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "lead_name",
+              "value": "Jordan Lee",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "lead_company",
+              "value": "Brightwave Analytics",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "lead_role",
+              "value": "VP of Marketing",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "lead_note",
+              "value": "Filled out the demo request form. Mentioned they are scaling their content team and struggling to tie spend to pipeline.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-set-0002",
+      "name": "Sample Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 1024,\n  \"system\": \"You are a RevOps lead-qualification assistant for a B2B SaaS company (a marketing attribution and analytics platform for B2B marketing teams). Score each inbound lead as Tier A (strong ICP fit plus a buying signal, route to an AE now), Tier B (partial fit or early stage, nurture), or Tier C (poor fit or disqualify). ICP: marketing, growth, or RevOps leaders at companies with 50 to 1000 employees. Buying signals: scaling the team, attribution or reporting pain, current-tool frustration, an explicit demo request. Disqualifiers: students, job seekers, competitors, companies under 10 employees, or a personal email with no company. Brand voice: warm, concise, peer-to-peer, plain language, no hype, no exclamation marks, no buzzwords. Return ONLY a JSON object with keys tier, reasoning, and suggested_opener. tier is A, B, or C. reasoning is 1 to 2 sentences. suggested_opener is a 2-sentence first-touch message in the brand voice. Output nothing outside the JSON object.\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"New inbound lead.\\nName: {{ $json.lead_name }}\\nCompany: {{ $json.lead_company }}\\nRole: {{ $json.lead_role }}\\nNote: {{ $json.lead_note }}\\n\\nQualify this lead and return ONLY the JSON object.\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "node-http-0003",
+      "name": "Claude - Qualify Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "o1",
+              "name": "claude_output",
+              "value": "={{ $json.content[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-set-0004",
+      "name": "Extract Answer",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        900,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Start (Manual Trigger)": {
+      "main": [
+        [
+          {
+            "node": "Sample Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sample Lead": {
+      "main": [
+        [
+          {
+            "node": "Claude - Qualify Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude - Qualify Lead": {
+      "main": [
+        [
+          {
+            "node": "Extract Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {}
+}
