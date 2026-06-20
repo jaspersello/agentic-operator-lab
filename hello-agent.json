@@ -3,13 +3,13 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "node-trigger-0001",
+      "id": "2420fac8-a5e7-438c-a514-4494a5a24ab1",
       "name": "Start (Manual Trigger)",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        240,
-        300
+        -208,
+        -160
       ]
     },
     {
@@ -25,13 +25,13 @@
             {
               "id": "f2",
               "name": "lead_company",
-              "value": "Brightwave Analytics",
+              "value": "Bayern Munich",
               "type": "string"
             },
             {
               "id": "f3",
               "name": "lead_role",
-              "value": "VP of Marketing",
+              "value": "Professional Soccer Player",
               "type": "string"
             },
             {
@@ -44,13 +44,13 @@
         },
         "options": {}
       },
-      "id": "node-set-0002",
+      "id": "b4b8e1ff-eb15-49be-994d-734d302f50f7",
       "name": "Sample Lead",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        460,
-        300
+        16,
+        -160
       ]
     },
     {
@@ -77,14 +77,20 @@
         "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 1024,\n  \"system\": \"You are a RevOps lead-qualification assistant for a B2B SaaS company (a marketing attribution and analytics platform for B2B marketing teams). Score each inbound lead as Tier A (strong ICP fit plus a buying signal, route to an AE now), Tier B (partial fit or early stage, nurture), or Tier C (poor fit or disqualify). ICP: marketing, growth, or RevOps leaders at companies with 50 to 1000 employees. Buying signals: scaling the team, attribution or reporting pain, current-tool frustration, an explicit demo request. Disqualifiers: students, job seekers, competitors, companies under 10 employees, or a personal email with no company. Brand voice: warm, concise, peer-to-peer, plain language, no hype, no exclamation marks, no buzzwords. Return ONLY a JSON object with keys tier, reasoning, and suggested_opener. tier is A, B, or C. reasoning is 1 to 2 sentences. suggested_opener is a 2-sentence first-touch message in the brand voice. Output nothing outside the JSON object.\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"New inbound lead.\\nName: {{ $json.lead_name }}\\nCompany: {{ $json.lead_company }}\\nRole: {{ $json.lead_role }}\\nNote: {{ $json.lead_note }}\\n\\nQualify this lead and return ONLY the JSON object.\"\n    }\n  ]\n}",
         "options": {}
       },
-      "id": "node-http-0003",
+      "id": "aa2fbb13-feed-4931-9110-d91b3d6587d8",
       "name": "Claude - Qualify Lead",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        680,
-        300
-      ]
+        240,
+        -160
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ds0RR3n4vGEkNJNy",
+          "name": "Header Auth account"
+        }
+      }
     },
     {
       "parameters": {
@@ -100,16 +106,17 @@
         },
         "options": {}
       },
-      "id": "node-set-0004",
+      "id": "61efb8fe-a15d-41df-9f61-a3abc8ebbbe9",
       "name": "Extract Answer",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        900,
-        300
+        464,
+        -160
       ]
     }
   ],
+  "pinData": {},
   "connections": {
     "Start (Manual Trigger)": {
       "main": [
@@ -147,8 +154,15 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
   },
-  "pinData": {},
-  "meta": {}
+  "versionId": "15ea062d-78b2-41ad-a245-374c76e2eca1",
+  "meta": {
+    "instanceId": "f3ea1da98657fa78b5b2ad070e32ec53ecc4da6cbe6f64cc6d0fc20c17d9e0bb"
+  },
+  "nodeGroups": [],
+  "id": "cRIF7N9cOurB4KNn",
+  "tags": []
 }
