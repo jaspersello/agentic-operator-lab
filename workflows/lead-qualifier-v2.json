@@ -1,0 +1,240 @@
+{
+  "name": "Lead Qualifier v2 - Skills + Expressions",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "node-trigger-0001",
+      "name": "Start (Manual Trigger)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        220,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "sop",
+              "value": "You are a RevOps lead-qualification assistant for a B2B SaaS company (a marketing attribution and analytics platform).\n\nScore each inbound lead into one tier:\n- Tier A: strong ICP fit AND a buying signal. Route to an AE now.\n- Tier B: partial fit or early stage. Nurture.\n- Tier C: poor fit or a disqualifier. Decline.\n\nICP: marketing, growth, or RevOps leaders at companies with 50 to 1000 employees.\nBuying signals: scaling the team, attribution or reporting pain, current-tool frustration, an explicit demo request.\nDisqualifiers: students, job seekers, competitors, companies under 10 employees, or a personal email with no company.\nIf lead data is missing or ambiguous, choose Tier B and say what is missing. Never guess.",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "brand_voice",
+              "value": "Write peer-to-peer, like a smart colleague, not a vendor. Plain language, concise, specific to what the lead said. Calm confidence, never hype.\nHard rules: no exclamation marks; no buzzwords (revolutionary, game-changing, supercharge, unlock, 10x, synergy, leverage as a verb); no fake urgency; one ask per message; never invent facts about the lead.",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "output_schema",
+              "value": "Return ONLY a JSON object, nothing else, with exactly these keys:\n{\n  \"tier\": \"A\" | \"B\" | \"C\",\n  \"reasoning\": \"1-2 sentences grounded in the lead's actual details\",\n  \"suggested_opener\": \"a 2-sentence first-touch message in the brand voice\"\n}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-skills-0002",
+      "name": "Skill Library",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        420,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "lead_name",
+              "value": "Jordan Lee",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "lead_company",
+              "value": "Brightwave Analytics",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "lead_role",
+              "value": "VP of Marketing",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "lead_note",
+              "value": "Filled out the demo request form. Mentioned they are scaling their content team and struggling to tie spend to pipeline.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-lead-0003",
+      "name": "Sample Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        620,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 1024,\n  \"system\": $('Skill Library').item.json.sop + \"\\n\\nBRAND VOICE\\n\" + $('Skill Library').item.json.brand_voice + \"\\n\\nOUTPUT FORMAT\\n\" + $('Skill Library').item.json.output_schema,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"New inbound lead.\\nName: \" + $json.lead_name + \"\\nCompany: \" + $json.lead_company + \"\\nRole: \" + $json.lead_role + \"\\nNote: \" + $json.lead_note + \"\\n\\nQualify this lead and return ONLY the JSON object.\"\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "node-http-0004",
+      "name": "Claude - Qualify Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "o1",
+              "name": "claude_output",
+              "value": "={{ $json.content[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-extract-0005",
+      "name": "Extract Answer",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1080,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "status",
+              "value": "FAILED",
+              "type": "string"
+            },
+            {
+              "id": "e2",
+              "name": "note",
+              "value": "Claude request failed after 3 retries. Routed here instead of crashing. Needs human review.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-error-0006",
+      "name": "Handle Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1080,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Start (Manual Trigger)": {
+      "main": [
+        [
+          {
+            "node": "Skill Library",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skill Library": {
+      "main": [
+        [
+          {
+            "node": "Sample Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sample Lead": {
+      "main": [
+        [
+          {
+            "node": "Claude - Qualify Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude - Qualify Lead": {
+      "main": [
+        [
+          {
+            "node": "Extract Answer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {}
+}
