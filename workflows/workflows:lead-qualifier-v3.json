@@ -1,0 +1,413 @@
+{
+  "name": "Lead Qualifier v3 - Live Enrichment",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "14f28257-ada4-492e-b7a0-23c5a2e54a6a",
+      "name": "Start (Manual Trigger)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "sop",
+              "value": "You are a RevOps lead-qualification assistant for a B2B SaaS company (a marketing attribution and analytics platform).\n\nScore each inbound lead into one tier:\n- Tier A: strong ICP fit AND a buying signal. Route to an AE now.\n- Tier B: partial fit or early stage. Nurture.\n- Tier C: poor fit or a disqualifier. Decline.\n\nICP: marketing, growth, or RevOps leaders at companies with 50 to 1000 employees.\nBuying signals: scaling the team, attribution or reporting pain, current-tool frustration, explicit demo request.\nDisqualifiers: students, job seekers, competitors, companies under 10 employees, personal email with no company.\nIf lead data is missing or ambiguous, choose Tier B and say what is missing. Never guess.",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "brand_voice",
+              "value": "Write peer-to-peer, like a smart colleague, not a vendor. Plain language, concise, specific to what the lead said. Calm confidence, never hype.\nHard rules: no exclamation marks; no buzzwords; no fake urgency; one ask per message; never invent facts.",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "output_schema",
+              "value": "Return ONLY a JSON object, nothing else, with exactly these keys:\n{\n  \"tier\": \"A\" | \"B\" | \"C\",\n  \"reasoning\": \"1-2 sentences grounded in the lead's actual details\",\n  \"suggested_opener\": \"a 2-sentence first-touch message in the brand voice\",\n  \"enrichment_used\": \"brief note on what enrichment data was used, or none if not available\"\n}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "80f8b927-b341-465e-85a3-f34fafef260c",
+      "name": "Skill Library",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -608,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "lead_name",
+              "value": "Jordan Lee",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "lead_company",
+              "value": "Acme Corp",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "lead_role",
+              "value": "Head of Growth",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "lead_note",
+              "value": "Filled out demo form. Mentioned they are scaling their growth team and struggling with multi-touch attribution.",
+              "type": "string"
+            },
+            {
+              "id": "f5",
+              "name": "company_domain",
+              "value": "acmecorp-fake-domain.xyz",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "92bda5f0-4a03-4391-ae20-4bbe05019a06",
+      "name": "Sample Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -400,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://hn.algolia.com/api/v1/search?query={{ $json.company_domain }}&tags=story&hitsPerPage=3",
+        "options": {}
+      },
+      "id": "bdd06b32-cef9-4fa6-b988-eaa9c342935c",
+      "name": "HackerNews Enrichment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -208,
+        112
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "hn_summary",
+              "value": "={{ $json.hits && $json.hits.length > 0 ? $json.hits.map(h => '- ' + h.title + ' (' + h.points + ' points)').join('\\n') : 'No HackerNews mentions found.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b5c03d65-67fc-428f-bc3c-90ef8cfd6709",
+      "name": "Parse Enrichment",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e2",
+              "name": "hn_summary",
+              "value": "Enrichment unavailable - HackerNews API did not respond.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4c8731b5-017c-43e1-9b24-358fbef19943",
+      "name": "Enrichment Fallback",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 1024,\n  \"system\": $('Skill Library').item.json.sop + \"\\n\\nBRAND VOICE\\n\" + $('Skill Library').item.json.brand_voice + \"\\n\\nOUTPUT FORMAT\\n\" + $('Skill Library').item.json.output_schema,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"New inbound lead.\\nName: \" + $('Sample Lead').item.json.lead_name + \"\\nCompany: \" + $('Sample Lead').item.json.lead_company + \"\\nRole: \" + $('Sample Lead').item.json.lead_role + \"\\nNote: \" + $('Sample Lead').item.json.lead_note + \"\\n\\nEnrichment data from HackerNews (recent posts by this company domain):\\n\" + $json.hn_summary + \"\\n\\nQualify this lead and return ONLY the JSON object.\"\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "04f8bdc0-ff03-4358-8ecb-c506aa33e012",
+      "name": "Claude - Qualify Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        112
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ds0RR3n4vGEkNJNy",
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "o1",
+              "name": "claude_raw",
+              "value": "={{ $json.content[0].text }}",
+              "type": "string"
+            },
+            {
+              "id": "o2",
+              "name": "lead_name",
+              "value": "={{ $('Sample Lead').item.json.lead_name }}",
+              "type": "string"
+            },
+            {
+              "id": "o3",
+              "name": "lead_company",
+              "value": "={{ $('Sample Lead').item.json.lead_company }}",
+              "type": "string"
+            },
+            {
+              "id": "o4",
+              "name": "hn_summary",
+              "value": "={{ $('Parse Enrichment').item.json.hn_summary || $('Enrichment Fallback').item.json.hn_summary }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e8b31daf-6cf5-4db2-8e5d-5e61f199a135",
+      "name": "Final Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "err1",
+              "name": "status",
+              "value": "FAILED",
+              "type": "string"
+            },
+            {
+              "id": "err2",
+              "name": "note",
+              "value": "Claude request failed after retries. Needs human review.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1aedd358-5477-4ade-9a46-a41b49c2df82",
+      "name": "Handle Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8d731ea2-c7c3-4ebd-a39e-dcb381f79613",
+              "name": "Tier",
+              "value": "=={{ (() => { try { return JSON.parse($json.claude_raw).tier; } catch (e) { return 'PARSE_ERROR'; } })() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        -16
+      ],
+      "id": "c68c8174-a91d-4fea-a0f7-28c9beeecdbd",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start (Manual Trigger)": {
+      "main": [
+        [
+          {
+            "node": "Skill Library",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skill Library": {
+      "main": [
+        [
+          {
+            "node": "Sample Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sample Lead": {
+      "main": [
+        [
+          {
+            "node": "HackerNews Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HackerNews Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Parse Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enrichment Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Claude - Qualify Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrichment Fallback": {
+      "main": [
+        [
+          {
+            "node": "Claude - Qualify Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude - Qualify Lead": {
+      "main": [
+        [
+          {
+            "node": "Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Output": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "8612dd00-9098-4cf6-8d0d-7c17bc79a5b7",
+  "meta": {
+    "instanceId": "f3ea1da98657fa78b5b2ad070e32ec53ecc4da6cbe6f64cc6d0fc20c17d9e0bb"
+  },
+  "nodeGroups": [],
+  "id": "z86ocP1Dc2dCvJG5",
+  "tags": []
+}
