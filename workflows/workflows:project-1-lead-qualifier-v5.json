@@ -3,13 +3,13 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "n1",
+      "id": "d9b4ff5d-62df-4830-9634-2aecfbd05461",
       "name": "Start (Manual Trigger)",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        140,
-        380
+        -1504,
+        192
       ]
     },
     {
@@ -38,13 +38,13 @@
         },
         "options": {}
       },
-      "id": "n2",
+      "id": "df9ae206-028b-4765-a530-cb94fb6bf571",
       "name": "Skill Library",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        300,
-        380
+        -1280,
+        192
       ]
     },
     {
@@ -54,59 +54,58 @@
             {
               "id": "f1",
               "name": "lead_name",
-              "value": "Jordan Lee",
+              "value": "Morgan Reyes",
               "type": "string"
             },
             {
               "id": "f2",
               "name": "lead_company",
-              "value": "Stripe",
+              "value": "Fieldstone Goods",
               "type": "string"
             },
             {
               "id": "f3",
               "name": "lead_role",
-              "value": "Head of Growth",
+              "value": "Marketing Coordinator",
               "type": "string"
             },
             {
               "id": "f4",
               "name": "lead_note",
-              "value": "Filled out demo form. Scaling their growth team and struggling with multi-touch attribution.",
+              "value": "Downloaded our attribution whitepaper. No other contact yet.",
               "type": "string"
             },
             {
               "id": "f5",
               "name": "company_domain",
-              "value": "stripe.com",
+              "value": "fieldstonegoods.com",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "n3",
+      "id": "d6618484-06a1-4310-aafc-7a42e7395764",
       "name": "Sample Lead",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        460,
-        380
+        -1056,
+        192
       ]
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "=https://hn.algolia.com/api/v1/search?query={{ $json.company_domain }}&tags=story&hitsPerPage=3",
         "options": {}
       },
-      "id": "n4",
+      "id": "8453adb1-91f8-4632-a8c4-2b18f052430c",
       "name": "HackerNews Enrichment",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        620,
-        380
+        -832,
+        192
       ],
       "onError": "continueErrorOutput"
     },
@@ -122,17 +121,15 @@
             }
           ]
         },
-        "options": {
-          "includeOtherFields": true
-        }
+        "options": {}
       },
-      "id": "n5",
+      "id": "11b6b8b3-5e68-47e7-a994-49a42dbec0fa",
       "name": "Parse Enrichment",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        780,
-        280
+        -608,
+        96
       ]
     },
     {
@@ -149,13 +146,13 @@
         },
         "options": {}
       },
-      "id": "n6",
+      "id": "9a5e84f8-7ab6-47c3-aa03-05a08b377385",
       "name": "Enrichment Fallback",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        780,
-        480
+        -608,
+        288
       ]
     },
     {
@@ -182,17 +179,23 @@
         "jsonBody": "={{ ({\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 1024,\n  \"system\": $('Skill Library').item.json.sop + \"\\n\\nBRAND VOICE\\n\" + $('Skill Library').item.json.brand_voice + \"\\n\\nOUTPUT FORMAT\\n\" + $('Skill Library').item.json.output_schema,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"New inbound lead.\\nName: \" + $('Sample Lead').item.json.lead_name + \"\\nCompany: \" + $('Sample Lead').item.json.lead_company + \"\\nRole: \" + $('Sample Lead').item.json.lead_role + \"\\nNote: \" + $('Sample Lead').item.json.lead_note + \"\\n\\nEnrichment (recent HackerNews mentions):\\n\" + $json.hn_summary + \"\\n\\nQualify this lead and return ONLY the JSON object.\"\n    }\n  ]\n}) }}",
         "options": {}
       },
-      "id": "n7",
+      "id": "dde9596a-a1b1-42ae-976d-39c8a2806763",
       "name": "Claude - Qualify Lead",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        940,
-        380
+        -384,
+        192
       ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ds0RR3n4vGEkNJNy",
+          "name": "Header Auth account"
+        }
+      },
       "onError": "continueErrorOutput"
     },
     {
@@ -220,25 +223,25 @@
             {
               "id": "p3",
               "name": "tier",
-              "value": "={{ JSON.parse($json.claude_raw.replace(/```json/g, '').replace(/```/g, '').trim())['tier'] }}",
+              "value": "={{ JSON.parse($json.content[0].text.replace(/```json/g, '').replace(/```/g, '').trim())['tier'] }}",
               "type": "string"
             },
             {
               "id": "p4",
               "name": "reasoning",
-              "value": "={{ JSON.parse($json.claude_raw.replace(/```json/g, '').replace(/```/g, '').trim())['reasoning'] }}",
+              "value": "={{ JSON.parse($json.content[0].text.replace(/```json/g, '').replace(/```/g, '').trim())['reasoning'] }}",
               "type": "string"
             },
             {
               "id": "p5",
               "name": "suggested_opener",
-              "value": "={{ JSON.parse($json.claude_raw.replace(/```json/g, '').replace(/```/g, '').trim())['suggested_opener'] }}",
+              "value": "={{ JSON.parse($json.content[0].text.replace(/```json/g, '').replace(/```/g, '').trim())['suggested_opener'] }}",
               "type": "string"
             },
             {
               "id": "p6",
               "name": "enrichment_used",
-              "value": "={{ JSON.parse($json.claude_raw.replace(/```json/g, '').replace(/```/g, '').trim())['enrichment_used'] }}",
+              "value": "={{ JSON.parse($json.content[0].text.replace(/```json/g, '').replace(/```/g, '').trim())['enrichment_used'] }}",
               "type": "string"
             },
             {
@@ -251,13 +254,13 @@
         },
         "options": {}
       },
-      "id": "n8",
+      "id": "0179ebda-fe2c-4f99-b399-e8707881db1c",
       "name": "Parse Claude JSON",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1100,
-        280
+        -160,
+        96
       ]
     },
     {
@@ -280,13 +283,13 @@
         },
         "options": {}
       },
-      "id": "n9",
+      "id": "19c5264e-fb76-4413-b7bd-7289fedef8b6",
       "name": "Handle Error",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1100,
-        480
+        -160,
+        288
       ]
     },
     {
@@ -307,17 +310,16 @@
             }
           ]
         },
-        "options": {
-          "includeOtherFields": true
-        }
+        "includeOtherFields": true,
+        "options": {}
       },
-      "id": "n10",
+      "id": "4a6c84c3-67fd-44d6-904b-3ecccd6e7987",
       "name": "Validate Output",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1280,
-        280
+        64,
+        96
       ]
     },
     {
@@ -325,7 +327,9 @@
         "conditions": {
           "options": {
             "caseSensitive": true,
-            "typeValidation": "loose"
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
@@ -352,13 +356,13 @@
         },
         "options": {}
       },
-      "id": "n11",
+      "id": "71fea35e-560f-4ec0-b055-256d72ef2cc1",
       "name": "Needs Human? (valid Tier A)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1460,
-        280
+        288,
+        96
       ]
     },
     {
@@ -383,21 +387,19 @@
               "requiredField": true
             },
             {
-              "fieldLabel": "Notes",
-              "fieldType": "text",
-              "requiredField": false
+              "fieldLabel": "Notes"
             }
           ]
         },
         "options": {}
       },
-      "id": "n12",
+      "id": "eb62dfe9-71e0-4281-910a-a2c0dfbe4d70",
       "name": "HITL Approval",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        1640,
-        180
+        512,
+        0
       ],
       "webhookId": "hitl-approval-webhook"
     },
@@ -469,13 +471,13 @@
         },
         "options": {}
       },
-      "id": "n13",
+      "id": "3ee2c0f6-6eef-4229-8bf0-7b1d787f2081",
       "name": "Set Approval Status",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1820,
-        180
+        736,
+        0
       ]
     },
     {
@@ -546,16 +548,283 @@
         },
         "options": {}
       },
-      "id": "n14",
+      "id": "e80f218e-9b86-4d41-8b63-84cbf77c89ac",
       "name": "Set Auto Status",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1640,
-        400
+        512,
+        192
       ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Zimw6WxY_9NdC2lhS0Clg5mwOQ_JQ2Dkl7r1JMfa8Ck",
+          "mode": "list",
+          "cachedResultName": "20260701_Day 4 Agentic Ops Sprint_Lead CRM",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Zimw6WxY_9NdC2lhS0Clg5mwOQ_JQ2Dkl7r1JMfa8Ck/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Zimw6WxY_9NdC2lhS0Clg5mwOQ_JQ2Dkl7r1JMfa8Ck/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead_name",
+              "displayName": "lead_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead_company",
+              "displayName": "lead_company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tier",
+              "displayName": "tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reasoning",
+              "displayName": "reasoning",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "suggested_opener",
+              "displayName": "suggested_opener",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "enrichment_used",
+              "displayName": "enrichment_used",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hn_summary",
+              "displayName": "hn_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "approver_notes",
+              "displayName": "approver_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        736,
+        192
+      ],
+      "id": "3ac55992-a4a6-45d6-9b0c-740f3091ffa9",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FVwxyx2y7bJ8j3AX",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Zimw6WxY_9NdC2lhS0Clg5mwOQ_JQ2Dkl7r1JMfa8Ck",
+          "mode": "list",
+          "cachedResultName": "20260701_Day 4 Agentic Ops Sprint_Lead CRM",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Zimw6WxY_9NdC2lhS0Clg5mwOQ_JQ2Dkl7r1JMfa8Ck/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Zimw6WxY_9NdC2lhS0Clg5mwOQ_JQ2Dkl7r1JMfa8Ck/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead_name",
+              "displayName": "lead_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead_company",
+              "displayName": "lead_company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tier",
+              "displayName": "tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reasoning",
+              "displayName": "reasoning",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "suggested_opener",
+              "displayName": "suggested_opener",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "enrichment_used",
+              "displayName": "enrichment_used",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hn_summary",
+              "displayName": "hn_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "approver_notes",
+              "displayName": "approver_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        960,
+        0
+      ],
+      "id": "067d07e8-ad46-41db-9201-7f222046a356",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FVwxyx2y7bJ8j3AX",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
     }
   ],
+  "pinData": {},
   "connections": {
     "Start (Manual Trigger)": {
       "main": [
@@ -698,12 +967,41 @@
           }
         ]
       ]
+    },
+    "Set Approval Status": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Auto Status": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
-  "pinData": {},
-  "meta": {}
+  "versionId": "573e5308-02a9-4e90-bea2-6782ebb921ca",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f3ea1da98657fa78b5b2ad070e32ec53ecc4da6cbe6f64cc6d0fc20c17d9e0bb"
+  },
+  "nodeGroups": [],
+  "id": "UqfAP95b2fs3LPj6",
+  "tags": []
 }
