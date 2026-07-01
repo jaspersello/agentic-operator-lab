@@ -1,0 +1,709 @@
+{
+  "name": "Project 1 - Lead Qualifier (Day 5: HITL + guardrails)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "n1",
+      "name": "Start (Manual Trigger)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        140,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "sop",
+              "value": "You are a RevOps lead-qualification assistant for a B2B SaaS company (a marketing attribution and analytics platform).\n\nScore each inbound lead into one tier:\n- Tier A: strong ICP fit AND a buying signal. Route to an AE now.\n- Tier B: partial fit or early stage. Nurture.\n- Tier C: poor fit or a disqualifier. Decline.\n\nICP: marketing, growth, or RevOps leaders at companies with 50 to 1000 employees.\nBuying signals: scaling the team, attribution or reporting pain, current-tool frustration, explicit demo request.\nDisqualifiers: students, job seekers, competitors, companies under 10 employees, personal email with no company.\nIf lead data is missing or ambiguous, choose Tier B and say what is missing. Never guess.",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "brand_voice",
+              "value": "Write peer-to-peer, like a smart colleague, not a vendor. Plain language, concise, specific to what the lead said. Calm confidence, never hype.\nHard rules: no exclamation marks; no buzzwords; no fake urgency; one ask per message; never invent facts.",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "output_schema",
+              "value": "Return ONLY a JSON object, nothing else, with exactly these keys:\n{\n  \"tier\": \"A\" | \"B\" | \"C\",\n  \"reasoning\": \"1-2 sentences grounded in the lead's actual details\",\n  \"suggested_opener\": \"a 2-sentence first-touch message in the brand voice\",\n  \"enrichment_used\": \"brief note on what enrichment data was used, or none\"\n}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n2",
+      "name": "Skill Library",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        300,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "lead_name",
+              "value": "Jordan Lee",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "lead_company",
+              "value": "Stripe",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "lead_role",
+              "value": "Head of Growth",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "lead_note",
+              "value": "Filled out demo form. Scaling their growth team and struggling with multi-touch attribution.",
+              "type": "string"
+            },
+            {
+              "id": "f5",
+              "name": "company_domain",
+              "value": "stripe.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n3",
+      "name": "Sample Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        460,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://hn.algolia.com/api/v1/search?query={{ $json.company_domain }}&tags=story&hitsPerPage=3",
+        "options": {}
+      },
+      "id": "n4",
+      "name": "HackerNews Enrichment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        620,
+        380
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "hn_summary",
+              "value": "={{ $json.hits && $json.hits.length > 0 ? $json.hits.map(h => '- ' + h.title + ' (' + h.points + ' points)').join('\\n') : 'No HackerNews mentions found.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "includeOtherFields": true
+        }
+      },
+      "id": "n5",
+      "name": "Parse Enrichment",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        780,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e2",
+              "name": "hn_summary",
+              "value": "Enrichment unavailable - HackerNews API did not respond.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n6",
+      "name": "Enrichment Fallback",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        780,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 1024,\n  \"system\": $('Skill Library').item.json.sop + \"\\n\\nBRAND VOICE\\n\" + $('Skill Library').item.json.brand_voice + \"\\n\\nOUTPUT FORMAT\\n\" + $('Skill Library').item.json.output_schema,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"New inbound lead.\\nName: \" + $('Sample Lead').item.json.lead_name + \"\\nCompany: \" + $('Sample Lead').item.json.lead_company + \"\\nRole: \" + $('Sample Lead').item.json.lead_role + \"\\nNote: \" + $('Sample Lead').item.json.lead_note + \"\\n\\nEnrichment (recent HackerNews mentions):\\n\" + $json.hn_summary + \"\\n\\nQualify this lead and return ONLY the JSON object.\"\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "n7",
+      "name": "Claude - Qualify Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        940,
+        380
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p0",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "p1",
+              "name": "lead_name",
+              "value": "={{ $('Sample Lead').item.json.lead_name }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "lead_company",
+              "value": "={{ $('Sample Lead').item.json.lead_company }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "tier",
+              "value": "={{ JSON.parse($json.claude_raw.replace(/```json/g, '').replace(/```/g, '').trim())['tier'] }}",
+              "type": "string"
+            },
+            {
+              "id": "p4",
+              "name": "reasoning",
+              "value": "={{ JSON.parse($json.claude_raw.replace(/```json/g, '').replace(/```/g, '').trim())['reasoning'] }}",
+              "type": "string"
+            },
+            {
+              "id": "p5",
+              "name": "suggested_opener",
+              "value": "={{ JSON.parse($json.claude_raw.replace(/```json/g, '').replace(/```/g, '').trim())['suggested_opener'] }}",
+              "type": "string"
+            },
+            {
+              "id": "p6",
+              "name": "enrichment_used",
+              "value": "={{ JSON.parse($json.claude_raw.replace(/```json/g, '').replace(/```/g, '').trim())['enrichment_used'] }}",
+              "type": "string"
+            },
+            {
+              "id": "p7",
+              "name": "hn_summary",
+              "value": "={{ $('Parse Enrichment').item.json.hn_summary || $('Enrichment Fallback').item.json.hn_summary }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n8",
+      "name": "Parse Claude JSON",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1100,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "x1",
+              "name": "status",
+              "value": "FAILED",
+              "type": "string"
+            },
+            {
+              "id": "x2",
+              "name": "note",
+              "value": "Claude request failed after retries. Needs human review.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n9",
+      "name": "Handle Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1100,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "v1",
+              "name": "valid",
+              "value": "={{ ['A','B','C'].includes($json.tier) && !!$json.suggested_opener && $json.suggested_opener.length > 0 && !$json.suggested_opener.includes('!') }}",
+              "type": "boolean"
+            },
+            {
+              "id": "v2",
+              "name": "validation_notes",
+              "value": "={{ !['A','B','C'].includes($json.tier) ? 'invalid tier' : (!$json.suggested_opener || $json.suggested_opener.length === 0 ? 'empty opener' : ($json.suggested_opener.includes('!') ? 'opener has forbidden exclamation mark' : 'ok')) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "includeOtherFields": true
+        }
+      },
+      "id": "n10",
+      "name": "Validate Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1280,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.tier }}",
+              "rightValue": "A",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "n11",
+      "name": "Needs Human? (valid Tier A)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1460,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Approve Outreach - Tier A Lead",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Approve"
+                  },
+                  {
+                    "option": "Reject"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Notes",
+              "fieldType": "text",
+              "requiredField": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n12",
+      "name": "HITL Approval",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1640,
+        180
+      ],
+      "webhookId": "hitl-approval-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a0",
+              "name": "timestamp",
+              "value": "={{ $('Parse Claude JSON').item.json.timestamp }}",
+              "type": "string"
+            },
+            {
+              "id": "a1",
+              "name": "lead_name",
+              "value": "={{ $('Parse Claude JSON').item.json.lead_name }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "lead_company",
+              "value": "={{ $('Parse Claude JSON').item.json.lead_company }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "tier",
+              "value": "={{ $('Parse Claude JSON').item.json.tier }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "reasoning",
+              "value": "={{ $('Parse Claude JSON').item.json.reasoning }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "suggested_opener",
+              "value": "={{ $('Parse Claude JSON').item.json.suggested_opener }}",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "enrichment_used",
+              "value": "={{ $('Parse Claude JSON').item.json.enrichment_used }}",
+              "type": "string"
+            },
+            {
+              "id": "a7",
+              "name": "hn_summary",
+              "value": "={{ $('Parse Claude JSON').item.json.hn_summary }}",
+              "type": "string"
+            },
+            {
+              "id": "a8",
+              "name": "status",
+              "value": "={{ ($json.Decision || $json.decision || 'Approve') === 'Reject' ? 'rejected' : 'approved' }}",
+              "type": "string"
+            },
+            {
+              "id": "a9",
+              "name": "approver_notes",
+              "value": "={{ $json.Notes || $json.notes || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n13",
+      "name": "Set Approval Status",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1820,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b0",
+              "name": "timestamp",
+              "value": "={{ $('Parse Claude JSON').item.json.timestamp }}",
+              "type": "string"
+            },
+            {
+              "id": "b1",
+              "name": "lead_name",
+              "value": "={{ $('Parse Claude JSON').item.json.lead_name }}",
+              "type": "string"
+            },
+            {
+              "id": "b2",
+              "name": "lead_company",
+              "value": "={{ $('Parse Claude JSON').item.json.lead_company }}",
+              "type": "string"
+            },
+            {
+              "id": "b3",
+              "name": "tier",
+              "value": "={{ $('Parse Claude JSON').item.json.tier }}",
+              "type": "string"
+            },
+            {
+              "id": "b4",
+              "name": "reasoning",
+              "value": "={{ $('Parse Claude JSON').item.json.reasoning }}",
+              "type": "string"
+            },
+            {
+              "id": "b5",
+              "name": "suggested_opener",
+              "value": "={{ $('Parse Claude JSON').item.json.suggested_opener }}",
+              "type": "string"
+            },
+            {
+              "id": "b6",
+              "name": "enrichment_used",
+              "value": "={{ $('Parse Claude JSON').item.json.enrichment_used }}",
+              "type": "string"
+            },
+            {
+              "id": "b7",
+              "name": "hn_summary",
+              "value": "={{ $('Parse Claude JSON').item.json.hn_summary }}",
+              "type": "string"
+            },
+            {
+              "id": "b8",
+              "name": "status",
+              "value": "={{ $('Validate Output').item.json.valid === false ? 'needs-review' : 'auto-logged' }}",
+              "type": "string"
+            },
+            {
+              "id": "b9",
+              "name": "approver_notes",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n14",
+      "name": "Set Auto Status",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1640,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Start (Manual Trigger)": {
+      "main": [
+        [
+          {
+            "node": "Skill Library",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skill Library": {
+      "main": [
+        [
+          {
+            "node": "Sample Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sample Lead": {
+      "main": [
+        [
+          {
+            "node": "HackerNews Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HackerNews Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Parse Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enrichment Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Claude - Qualify Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrichment Fallback": {
+      "main": [
+        [
+          {
+            "node": "Claude - Qualify Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude - Qualify Lead": {
+      "main": [
+        [
+          {
+            "node": "Parse Claude JSON",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Claude JSON": {
+      "main": [
+        [
+          {
+            "node": "Validate Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Output": {
+      "main": [
+        [
+          {
+            "node": "Needs Human? (valid Tier A)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Human? (valid Tier A)": {
+      "main": [
+        [
+          {
+            "node": "HITL Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Auto Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HITL Approval": {
+      "main": [
+        [
+          {
+            "node": "Set Approval Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {}
+}
