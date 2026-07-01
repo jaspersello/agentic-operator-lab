@@ -1,4 +1,4 @@
-# Project 1 — Lead Qualification & Outreach Agent
+# Project 1 (Day 4) — Lead Qualification & Outreach Agent
 
 An agentic workflow that takes an inbound lead, enriches it with live external data, qualifies it against a RevOps SOP, drafts a personalized first-touch message in brand voice, and logs everything to a CRM sheet — with a human-in-the-loop gate before anything is sent.
 
